@@ -1,0 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --radius: 0.625rem;
+
+    /* Deep Royal Purple palette */
+    --background: 0.975 0.005 295;
+    --foreground: 0.15 0.02 295;
+    --card: 1 0 0;
+    --card-foreground: 0.15 0.02 295;
+    --popover: 1 0 0;
+    --popover-foreground: 0.15 0.02 295;
+
+    /* Primary = purple-700 (#6D28D9) */
+    --primary: 0.395 0.23 300;
+    --primary-foreground: 0.985 0 0;
+
+    /* Secondary = light purple tint */
+    --secondary: 0.94 0.04 295;
+    --secondary-foreground: 0.35 0.18 295;
+
+    --muted: 0.95 0.02 295;
+    --muted-foreground: 0.5 0.07 295;
+
+    /* Accent = purple-600 (#7C3AED) */
+    --accent: 0.445 0.24 300;
+    --accent-foreground: 0.985 0 0;
+
+    --destructive: 0.577 0.245 27.325;
+    --destructive-foreground: 0.985 0 0;
+
+    --border: 0.88 0.03 295;
+    --input: 0.88 0.03 295;
+    --ring: 0.395 0.23 300;
+
+    --chart-1: 0.646 0.222 41.116;
+    --chart-2: 0.6 0.118 184.704;
+    --chart-3: 0.395 0.23 300;
+    --chart-4: 0.828 0.189 84.429;
+    --chart-5: 0.769 0.188 70.08;
+
+    --sidebar: 0.295 0.17 300;
+    --sidebar-foreground: 0.985 0 0;
+    --sidebar-primary: 0.985 0 0;
+    --sidebar-primary-foreground: 0.295 0.17 300;
+    --sidebar-accent: 0.38 0.21 300;
+    --sidebar-accent-foreground: 0.985 0 0;
+    --sidebar-border: 0.38 0.21 300;
+    --sidebar-ring: 0.985 0 0;
+
+    /* Brand gradient stops */
+    --brand-dark: oklch(0.27 0.18 300);
+    --brand-mid: oklch(0.35 0.21 300);
+    --brand-light: oklch(0.445 0.24 300);
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  }
+}
+
+@layer utilities {
+  .brand-gradient {
+    background: linear-gradient(
+      135deg,
+      var(--brand-dark) 0%,
+      var(--brand-mid) 50%,
+      var(--brand-light) 100%
+    );
+  }
+
+  .brand-gradient-text {
+    background: linear-gradient(
+      135deg,
+      var(--brand-dark) 0%,
+      var(--brand-light) 100%
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .font-signature {
+    font-family: "Dancing Script", cursive;
+  }
+
+  .no-select {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}
