@@ -5,13 +5,16 @@ import UploadScreen from "./components/UploadScreen";
 
 export interface OverlayItem {
   id: string;
-  type: "signature" | "initial" | "datetime" | "stamp";
+  type: "signature" | "initial" | "datetime" | "stamp" | "text";
   pageIndex: number;
   x: number; // % of page width (0–1)
   y: number; // % of page height (0–1)
   width: number; // % of page width
   height: number; // % of page height
-  content: string; // dataUrl for sig/initial, text for datetime/stamp
+  content: string; // dataUrl for sig/initial, text for datetime/stamp/text
+  fontSize?: number; // default 14, for text type
+  fontColor?: string; // default "#000000", for text type
+  fontFamily?: string; // default "Arial", for text type
 }
 
 export default function App() {

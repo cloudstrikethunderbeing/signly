@@ -1,7 +1,13 @@
-import { Clock, Download, PenLine, Stamp, Type } from "lucide-react";
+import { Baseline, Clock, Download, PenLine, Stamp, Type } from "lucide-react";
 import { motion } from "motion/react";
 
-type ActiveTool = "signature" | "initial" | "datetime" | "stamp" | null;
+export type ActiveTool =
+  | "signature"
+  | "initial"
+  | "datetime"
+  | "stamp"
+  | "text"
+  | null;
 
 interface Props {
   activeTool: ActiveTool;
@@ -16,6 +22,7 @@ const tools = [
   { id: "initial" as const, icon: Type, label: "Initial" },
   { id: "datetime" as const, icon: Clock, label: "Date/Time" },
   { id: "stamp" as const, icon: Stamp, label: "Stamp" },
+  { id: "text" as const, icon: Baseline, label: "Text" },
 ];
 
 function SpinnerSvg() {
@@ -71,7 +78,7 @@ export default function Toolbar({
                   e.stopPropagation();
                   onToolSelect(id);
                 }}
-                className={`flex flex-col items-center gap-1 min-w-[56px] min-h-[56px] justify-center rounded-xl transition-all ${
+                className={`flex flex-col items-center gap-1 min-w-[48px] min-h-[56px] justify-center rounded-xl transition-all ${
                   isActive
                     ? "bg-white/25 text-white"
                     : "text-white/70 hover:bg-white/10 hover:text-white"
@@ -90,7 +97,7 @@ export default function Toolbar({
               onDownload();
             }}
             disabled={isExporting}
-            className="flex flex-col items-center gap-1 min-w-[56px] min-h-[56px] justify-center rounded-xl bg-white/20 text-white hover:bg-white/30 transition-all disabled:opacity-50"
+            className="flex flex-col items-center gap-1 min-w-[48px] min-h-[56px] justify-center rounded-xl bg-white/20 text-white hover:bg-white/30 transition-all disabled:opacity-50"
           >
             {isExporting ? <SpinnerSvg /> : <Download className="w-5 h-5" />}
             <span className="text-[10px] font-medium">Download</span>

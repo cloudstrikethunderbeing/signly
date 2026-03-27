@@ -33,6 +33,18 @@ const stampHexColors: Record<string, string> = {
   DATED: "#1D4ED8",
 };
 
+function fontFamilyToStandardFont(fontFamily: string): StandardFonts {
+  const lower = fontFamily.toLowerCase();
+  if (lower.includes("georgia") || lower.includes("times")) {
+    return StandardFonts.TimesRoman;
+  }
+  if (lower.includes("courier")) {
+    return StandardFonts.Courier;
+  }
+  // Arial, Helvetica, and everything else → Helvetica
+  return StandardFonts.Helvetica;
+}
+
 export async function exportSignedPdf(
   originalBytes: ArrayBuffer,
   overlays: OverlayItem[],
@@ -42,6 +54,21 @@ export async function exportSignedPdf(
   const pages = pdfDoc.getPages();
   const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+  // Pre-embed fonts needed for text overlays (cache by StandardFonts key)
+  const fontCache = new Map<
+    StandardFonts,
+    Awaited<ReturnType<typeof pdfDoc.embedFont>>
+  >();
+  fontCache.set(StandardFonts.Helvetica, helvetica);
+  fontCache.set(StandardFonts.HelveticaBold, helveticaBold);
+
+  const getFont = async (sf: StandardFonts) => {
+    if (!fontCache.has(sf)) {
+      fontCache.set(sf, await pdfDoc.embedFont(sf));
+    }
+    return fontCache.get(sf)!;
+  };
 
   for (const item of overlays) {
     const page = pages[item.pageIndex];
@@ -107,6 +134,36 @@ export async function exportSignedPdf(
         color: stampColor,
         opacity: 0.85,
       });
+    } else if (item.type === "text") {
+      const textContent = item.content?.trim();
+      if (!textContent || textContent === "Type here") continue;
+
+      const sf = fontFamilyToStandardFont(item.fontFamily ?? "Arial");
+      const font = await getFont(sf);
+      const fontSize = Math.max(6, Math.min(item.fontSize ?? 14, 72));
+      const { r, g, b } = hexToRgb(item.fontColor ?? "#000000");
+
+      // Handle multi-line text
+      const lines = textContent.split("\n");
+      const lineHeight = fontSize * 1.3;
+      // Start from top of the box (pdf coords: top = absY + absH)
+      let currentY = absY + absH - fontSize;
+
+      for (const line of lines) {
+        if (!line) {
+          currentY -= lineHeight;
+          continue;
+        }
+        if (currentY < absY) break; // clip to box
+        page.drawText(line, {
+          x: absX + 2,
+          y: currentY,
+          size: fontSize,
+          font,
+          color: rgb(r, g, b),
+        });
+        currentY -= lineHeight;
+      }
     }
   }
 

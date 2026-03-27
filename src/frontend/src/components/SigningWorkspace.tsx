@@ -1,6 +1,8 @@
+/// <reference types="vite/client" />
 import { Button } from "@/components/ui/button";
-import { FileText } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { FileText, Redo2, Undo2 } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { useCallback, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import { toast } from "sonner";
 import type { OverlayItem } from "../App";
@@ -8,14 +10,12 @@ import { exportSignedPdf } from "../utils/pdfExport";
 import OverlayElement from "./OverlayElement";
 import SignatureModal from "./SignatureModal";
 import StampPicker from "./StampPicker";
+import TextStylePanel from "./TextStylePanel";
 import Toolbar from "./Toolbar";
+import type { ActiveTool } from "./Toolbar";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
-
-// Use Vite's ?worker&inline to bundle the PDF.js worker directly into the
-// main JS bundle as a data URL. This makes zero network requests for the
-// worker, completely bypassing server MIME type restrictions.
-import PDFWorker from "pdfjs-dist/build/pdf.worker.min.mjs?worker&inline";
+import PDFWorkerInline from "pdfjs-dist/build/pdf.worker.min.mjs?worker&inline";
 
 let workerInitialized = false;
 
@@ -23,14 +23,14 @@ function initWorker() {
   if (workerInitialized) return;
   workerInitialized = true;
   try {
-    // @ts-ignore – workerPort accepts a Worker instance
-    pdfjs.GlobalWorkerOptions.workerPort = new PDFWorker();
+    const worker = new PDFWorkerInline();
+    pdfjs.GlobalWorkerOptions.workerPort = worker as unknown as Worker;
   } catch (e) {
     console.error("Failed to init PDF worker", e);
   }
 }
 
-type ActiveTool = "signature" | "initial" | "datetime" | "stamp" | null;
+initWorker();
 
 interface PageDimension {
   width: number;
@@ -62,12 +62,44 @@ export default function SigningWorkspace({
   const [showStampPicker, setShowStampPicker] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
+  // Undo/redo history
+  const [overlayHistory, setOverlayHistory] = useState<OverlayItem[][]>([[]]);
+  const [historyIndex, setHistoryIndex] = useState(0);
+
   const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const pdfUrl = useRef<string>(URL.createObjectURL(pdfFile)).current;
 
-  useEffect(() => {
-    initWorker();
-  }, []);
+  const pushHistory = useCallback(
+    (newOverlays: OverlayItem[]) => {
+      setOverlayHistory((prev) => [
+        ...prev.slice(0, historyIndex + 1),
+        newOverlays,
+      ]);
+      setHistoryIndex((prev) => prev + 1);
+    },
+    [historyIndex],
+  );
+
+  const handleUndo = () => {
+    if (historyIndex <= 0) return;
+    const newIndex = historyIndex - 1;
+    setHistoryIndex(newIndex);
+    setOverlays(overlayHistory[newIndex]);
+    setSelectedId(null);
+  };
+
+  const handleRedo = () => {
+    if (historyIndex >= overlayHistory.length - 1) return;
+    const newIndex = historyIndex + 1;
+    setHistoryIndex(newIndex);
+    setOverlays(overlayHistory[newIndex]);
+    setSelectedId(null);
+  };
+
+  // Derive the currently selected overlay
+  const selectedOverlay = overlays.find((o) => o.id === selectedId) ?? null;
+  const showTextStylePanel =
+    selectedOverlay !== null && selectedOverlay.type === "text";
 
   const handleDocumentLoad = ({ numPages: n }: { numPages: number }) => {
     setNumPages(n);
@@ -102,10 +134,11 @@ export default function SigningWorkspace({
       const now = new Date();
       const content = `${now.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}, ${now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}`;
       enterPlacementMode("datetime", content);
-      toast("Tap on the document to place the date/time stamp", { icon: "📅" });
     } else if (tool === "stamp") {
       setActiveTool("stamp");
       setShowStampPicker(true);
+    } else if (tool === "text") {
+      enterPlacementMode("text", "");
     } else {
       setActiveTool(null);
       setIsPlacementMode(false);
@@ -115,18 +148,11 @@ export default function SigningWorkspace({
   const handleSignatureSave = (dataUrl: string) => {
     setShowSignatureModal(false);
     enterPlacementMode(activeTool, dataUrl);
-    toast(
-      activeTool === "signature"
-        ? "Tap on the document to place your signature"
-        : "Tap on the document to place your initials",
-      { icon: "✍️" },
-    );
   };
 
   const handleStampSelect = (text: string) => {
     setShowStampPicker(false);
     enterPlacementMode("stamp", text);
-    toast("Tap on the document to place the stamp", { icon: "🔖" });
   };
 
   const defaultSizes: Record<string, { w: number; h: number }> = {
@@ -134,13 +160,14 @@ export default function SigningWorkspace({
     initial: { w: 0.12, h: 0.06 },
     datetime: { w: 0.38, h: 0.045 },
     stamp: { w: 0.22, h: 0.09 },
+    text: { w: 0.25, h: 0.06 },
   };
 
   const handlePageClick = (
     e: React.MouseEvent<HTMLDivElement>,
     pageIndex: number,
   ) => {
-    if (!isPlacementMode || !activeTool || !pendingContent) return;
+    if (!isPlacementMode || !activeTool) return;
     e.stopPropagation();
 
     const rect = e.currentTarget.getBoundingClientRect();
@@ -150,16 +177,23 @@ export default function SigningWorkspace({
     const size = defaultSizes[activeTool] ?? { w: 0.2, h: 0.08 };
     const newItem: OverlayItem = {
       id: `${activeTool}-${Date.now()}`,
-      type: activeTool,
+      type: activeTool as OverlayItem["type"],
       pageIndex,
       x: Math.max(0, xPct - size.w / 2),
       y: Math.max(0, yPct - size.h / 2),
       width: size.w,
       height: size.h,
       content: pendingContent,
+      ...(activeTool === "text" && {
+        fontSize: 14,
+        fontColor: "#000000",
+        fontFamily: "Arial",
+      }),
     };
 
-    setOverlays((prev) => [...prev, newItem]);
+    const newOverlays = [...overlays, newItem];
+    setOverlays(newOverlays);
+    pushHistory(newOverlays);
     setSelectedId(newItem.id);
     setIsPlacementMode(false);
     setActiveTool(null);
@@ -173,9 +207,25 @@ export default function SigningWorkspace({
   };
 
   const handleOverlayDelete = (id: string) => {
-    setOverlays((prev) => prev.filter((o) => o.id !== id));
+    const newOverlays = overlays.filter((o) => o.id !== id);
+    setOverlays(newOverlays);
+    pushHistory(newOverlays);
     setSelectedId(null);
   };
+
+  const handleDragEnd = useCallback(() => {
+    setOverlays((current) => {
+      pushHistory(current);
+      return current;
+    });
+  }, [pushHistory]);
+
+  const handleTextBlur = useCallback(() => {
+    setOverlays((current) => {
+      pushHistory(current);
+      return current;
+    });
+  }, [pushHistory]);
 
   const handleDownload = async () => {
     if (isExporting) return;
@@ -201,6 +251,9 @@ export default function SigningWorkspace({
 
   const pageNumbers = Array.from({ length: numPages }, (_, i) => i);
 
+  const canUndo = historyIndex > 0;
+  const canRedo = historyIndex < overlayHistory.length - 1;
+
   return (
     <div
       className="h-screen flex flex-col md:flex-row bg-background overflow-hidden"
@@ -208,7 +261,17 @@ export default function SigningWorkspace({
       onClick={() => setSelectedId(null)}
       onKeyDown={(e) => {
         if (e.key === "Escape") setSelectedId(null);
+        if ((e.metaKey || e.ctrlKey) && e.key === "z") {
+          e.preventDefault();
+          if (e.shiftKey) handleRedo();
+          else handleUndo();
+        }
+        if ((e.metaKey || e.ctrlKey) && e.key === "y") {
+          e.preventDefault();
+          handleRedo();
+        }
       }}
+      tabIndex={-1}
     >
       <Toolbar
         activeTool={activeTool}
@@ -226,6 +289,39 @@ export default function SigningWorkspace({
             </div>
             <span className="font-bold text-foreground text-lg">Signly</span>
           </div>
+
+          {/* Undo / Redo */}
+          <div className="flex items-center gap-1">
+            <Button
+              data-ocid="workspace.undo.button"
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleUndo();
+              }}
+              disabled={!canUndo}
+              title="Undo (Ctrl+Z)"
+              className="px-2"
+            >
+              <Undo2 className="w-4 h-4" />
+            </Button>
+            <Button
+              data-ocid="workspace.redo.button"
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleRedo();
+              }}
+              disabled={!canRedo}
+              title="Redo (Ctrl+Shift+Z)"
+              className="px-2"
+            >
+              <Redo2 className="w-4 h-4" />
+            </Button>
+          </div>
+
           <div className="flex items-center gap-2">
             {isPlacementMode && (
               <span className="hidden sm:block text-xs text-muted-foreground bg-secondary/60 px-3 py-1 rounded-full animate-pulse">
@@ -246,6 +342,29 @@ export default function SigningWorkspace({
             </Button>
           </div>
         </header>
+
+        {/* Floating Text Style Panel */}
+        <AnimatePresence>
+          {showTextStylePanel && selectedOverlay && (
+            <motion.div
+              key="text-style-panel"
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.15 }}
+              className="absolute top-[56px] left-1/2 -translate-x-1/2 z-30 md:left-24 md:translate-x-0"
+              style={{ pointerEvents: "auto" }}
+              data-ocid="text_style.panel"
+            >
+              <TextStylePanel
+                item={selectedOverlay}
+                onUpdate={(updates) =>
+                  handleOverlayUpdate(selectedOverlay.id, updates)
+                }
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <main
           className="flex-1 overflow-y-auto pb-20 md:pb-6 px-4 md:px-8"
@@ -325,6 +444,8 @@ export default function SigningWorkspace({
                         handleOverlayUpdate(overlay.id, updates)
                       }
                       onDelete={() => handleOverlayDelete(overlay.id)}
+                      onDragEnd={handleDragEnd}
+                      onTextBlur={handleTextBlur}
                       data-ocid={`overlay.item.${idx + 1}`}
                     />
                   ))}

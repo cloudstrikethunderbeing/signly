@@ -20,6 +20,8 @@ interface Props {
   onSelect: (e: React.MouseEvent) => void;
   onUpdate: (updates: Partial<OverlayItem>) => void;
   onDelete: () => void;
+  onDragEnd?: () => void;
+  onTextBlur?: () => void;
   "data-ocid"?: string;
 }
 
@@ -35,22 +37,32 @@ export default function OverlayElement({
   onSelect,
   onUpdate,
   onDelete,
+  onDragEnd,
+  onTextBlur,
 }: Props) {
   const dragRef = useRef<DragState | null>(null);
+  const didDragRef = useRef(false);
 
   const getParentDimensions = (el: HTMLElement): { w: number; h: number } => {
-    // parentElement's parent is the page container
-    const parent = el.parentElement?.parentElement ?? el.parentElement!;
-    const rect = parent.getBoundingClientRect();
-    return { w: rect.width, h: rect.height };
+    let current: HTMLElement | null = el.parentElement;
+    while (current) {
+      const style = window.getComputedStyle(current);
+      if (style.position === "relative") {
+        const rect = current.getBoundingClientRect();
+        return { w: rect.width, h: rect.height };
+      }
+      current = current.parentElement;
+    }
+    return { w: window.innerWidth, h: window.innerHeight };
   };
 
-  const handlePointerDown = (
-    e: React.PointerEvent<HTMLButtonElement>,
+  const startDrag = (
+    e: React.PointerEvent<HTMLElement>,
     mode: "move" | "resize",
   ) => {
     e.stopPropagation();
     e.preventDefault();
+    didDragRef.current = false;
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     const { w, h } = getParentDimensions(e.currentTarget as HTMLElement);
     dragRef.current = {
@@ -66,11 +78,15 @@ export default function OverlayElement({
     };
   };
 
-  const handlePointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+  const handlePointerMove = (e: React.PointerEvent<HTMLElement>) => {
     if (!dragRef.current) return;
     const d = dragRef.current;
     const dx = (e.clientX - d.startClientX) / d.parentW;
     const dy = (e.clientY - d.startClientY) / d.parentH;
+
+    if (Math.abs(dx) > 0.002 || Math.abs(dy) > 0.002) {
+      didDragRef.current = true;
+    }
 
     if (d.mode === "move") {
       onUpdate({
@@ -86,7 +102,10 @@ export default function OverlayElement({
   };
 
   const handlePointerUp = () => {
-    dragRef.current = null;
+    if (dragRef.current) {
+      dragRef.current = null;
+      onDragEnd?.();
+    }
   };
 
   const renderContent = () => {
@@ -134,8 +153,16 @@ export default function OverlayElement({
           </div>
         );
       }
+      case "text":
+        return null;
     }
   };
+
+  const isText = item.type === "text";
+
+  const sharedOutlineClass = isSelected
+    ? "outline outline-2 outline-offset-1 outline-primary/70"
+    : "";
 
   return (
     <div
@@ -149,31 +176,87 @@ export default function OverlayElement({
         boxSizing: "border-box",
       }}
     >
-      {/* Main draggable area */}
-      <button
-        type="button"
-        aria-label={`${item.type} element`}
-        style={{
-          cursor: "grab",
-          width: "100%",
-          height: "100%",
-          padding: 0,
-          background: "none",
-          border: "none",
-          display: "block",
-        }}
-        className={`no-select ${
-          isSelected
-            ? "outline outline-2 outline-offset-1 outline-primary/70"
-            : ""
-        }`}
-        onClick={onSelect}
-        onPointerDown={(e) => handlePointerDown(e, "move")}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-      >
-        {renderContent()}
-      </button>
+      {isText ? (
+        /* Text overlay: draggable container with inline-editable textarea */
+        <div
+          className={`no-select ${sharedOutlineClass}`}
+          style={{
+            width: "100%",
+            height: "100%",
+            display: "flex",
+            flexDirection: "column",
+            background: "transparent",
+            cursor: "grab",
+            touchAction: "none",
+          }}
+          role="presentation"
+          onPointerDown={(e) => {
+            // Don't start drag if clicking the textarea itself
+            if ((e.target as HTMLElement).tagName === "TEXTAREA") return;
+            startDrag(e, "move");
+          }}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onClick={(e) => {
+            if (!didDragRef.current) onSelect(e);
+          }}
+          onKeyDown={() => {}}
+        >
+          {/* Textarea */}
+          <textarea
+            value={item.content}
+            onChange={(e) => onUpdate({ content: e.target.value })}
+            onClick={(e) => e.stopPropagation()}
+            onKeyUp={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onFocus={(e) => e.stopPropagation()}
+            onBlur={() => onTextBlur?.()}
+            placeholder="Type here"
+            style={{
+              flex: 1,
+              width: "100%",
+              height: "100%",
+              background: "transparent",
+              border: "none",
+              outline: "none",
+              resize: "none",
+              overflow: "hidden",
+              padding: "2px 4px",
+              boxSizing: "border-box",
+              fontSize: item.fontSize ?? 14,
+              color: item.fontColor ?? "#000000",
+              fontFamily: item.fontFamily ?? "Arial",
+              lineHeight: 1.3,
+              cursor: "text",
+              caretColor: item.fontColor ?? "#000000",
+              pointerEvents: isSelected ? "auto" : "none",
+            }}
+            data-ocid="overlay.editor"
+          />
+        </div>
+      ) : (
+        /* Non-text: button wrapper */
+        <button
+          type="button"
+          aria-label={`${item.type} element`}
+          style={{
+            cursor: "grab",
+            width: "100%",
+            height: "100%",
+            padding: 0,
+            background: "none",
+            border: "none",
+            display: "block",
+          }}
+          className={`no-select ${sharedOutlineClass}`}
+          onClick={onSelect}
+          onPointerDown={(e) => startDrag(e, "move")}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+        >
+          {renderContent()}
+        </button>
+      )}
 
       {/* Delete button */}
       {isSelected && (
@@ -198,7 +281,7 @@ export default function OverlayElement({
           aria-label="Resize element"
           onPointerDown={(e) => {
             e.stopPropagation();
-            handlePointerDown(e, "resize");
+            startDrag(e, "resize");
           }}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
