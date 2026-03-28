@@ -11,6 +11,7 @@ import OverlayElement from "./OverlayElement";
 import SignatureModal from "./SignatureModal";
 import StampPicker from "./StampPicker";
 import TextStylePanel from "./TextStylePanel";
+import TipDeveloper from "./TipDeveloper";
 import Toolbar from "./Toolbar";
 import type { ActiveTool } from "./Toolbar";
 import "react-pdf/dist/Page/AnnotationLayer.css";
@@ -61,6 +62,7 @@ export default function SigningWorkspace({
   >("signature");
   const [showStampPicker, setShowStampPicker] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [downloadSuccess, setDownloadSuccess] = useState(false);
 
   // Undo/redo history
   const [overlayHistory, setOverlayHistory] = useState<OverlayItem[][]>([[]]);
@@ -233,6 +235,7 @@ export default function SigningWorkspace({
     try {
       await exportSignedPdf(pdfBytes, overlays, pageDimensions);
       toast.success("Signed PDF downloaded!");
+      setDownloadSuccess(true);
     } catch (err) {
       console.error(err);
       toast.error("Export failed. Please try again.");
@@ -287,7 +290,11 @@ export default function SigningWorkspace({
             <div className="w-7 h-7 brand-gradient rounded-lg flex items-center justify-center">
               <FileText className="w-4 h-4 text-white" />
             </div>
-            <span className="font-bold text-foreground text-lg">Signly</span>
+            <img
+              src="/assets/uploads/signly-019d2e87-2375-704f-8372-0ce142d03f42-1.png"
+              alt="Signly"
+              className="h-24 w-auto object-contain"
+            />
           </div>
 
           {/* Undo / Redo */}
@@ -452,6 +459,12 @@ export default function SigningWorkspace({
                 </div>
               ))}
             </Document>
+
+            {downloadSuccess && (
+              <div className="w-full max-w-[800px] mt-2 mb-4">
+                <TipDeveloper />
+              </div>
+            )}
           </div>
         </main>
       </div>

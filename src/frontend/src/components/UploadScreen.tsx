@@ -59,18 +59,20 @@ export default function UploadScreen({ onFileSelect }: Props) {
   return (
     <div className="min-h-screen brand-gradient flex flex-col items-center justify-center px-4 py-12">
       <motion.div
-        initial={{ opacity: 0, y: -20 }}
+        initial={{ opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
+        transition={{ duration: 0.3 }}
         className="mb-10 text-center"
       >
         <div className="flex items-center justify-center gap-3 mb-3">
-          <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm border border-white/30">
-            <FileText className="w-5 h-5 text-white" />
-          </div>
-          <h1 className="text-4xl font-bold text-white tracking-tight">
-            Signly
-          </h1>
+          <img
+            src="/assets/uploads/signly-019d2e87-2375-704f-8372-0ce142d03f42-1.png"
+            alt="Signly"
+            fetchPriority="high"
+            decoding="sync"
+            className="h-40 w-auto object-contain rounded-xl"
+            style={{ imageRendering: "auto" }}
+          />
         </div>
         <p className="text-white/70 text-sm font-medium tracking-wide uppercase">
           Free · Private · Instant
@@ -78,9 +80,9 @@ export default function UploadScreen({ onFileSelect }: Props) {
       </motion.div>
 
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1 }}
+        transition={{ duration: 0.3, delay: 0.05 }}
         className="w-full max-w-md"
       >
         <div className="bg-white rounded-2xl shadow-2xl p-8">
@@ -187,7 +189,7 @@ export default function UploadScreen({ onFileSelect }: Props) {
       <motion.p
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.5 }}
+        transition={{ delay: 0.3 }}
         className="mt-10 text-white/40 text-xs text-center"
       >
         © {new Date().getFullYear()}. Built with ♥ using{" "}
