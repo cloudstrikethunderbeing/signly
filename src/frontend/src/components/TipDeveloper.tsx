@@ -4,13 +4,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 
 type CopyState = "idle" | "copied";
-type IcpTipState =
-  | "idle"
-  | "selecting"
-  | "confirming"
-  | "sending"
-  | "success"
-  | "error";
+type IcpTipState = "idle" | "loading" | "selecting" | "error" | "unavailable";
 
 const RECIPIENT_PRINCIPAL =
   "pkt5m-vzera-uztne-or4se-vgejr-xajuz-ulw55-zdxon-3euz7-gvakp-5qe";
@@ -51,6 +45,15 @@ const TIP_AMOUNTS = [
 ];
 
 type TipOption = (typeof TIP_AMOUNTS)[number];
+
+/** Returns true only when the environment is safe for Internet Identity login */
+function isIIEnvironmentValid(): boolean {
+  const hostname = window.location.hostname;
+  if (hostname.includes("draft")) return false;
+  if (hostname.includes("localhost")) return false;
+  if (!window.isSecureContext) return false;
+  return true;
+}
 
 async function sendIcrcTransfer(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -172,10 +175,27 @@ export default function TipDeveloper() {
   };
 
   const handleIcpTip = async () => {
+    // Environment guard — fail gracefully before attempting any login
+    if (!isIIEnvironmentValid()) {
+      setIcpTipState("unavailable");
+      return;
+    }
+
+    setIcpTipState("loading");
+    setIcpError(null);
+    setSelectedTip(null);
+
+    // 5-second timeout protection
+    let timedOut = false;
+    const timeoutId = setTimeout(() => {
+      timedOut = true;
+      setIcpTipState("error");
+      setIcpError(
+        "Internet Identity login failed or was blocked. Please try again or use copy-address tipping.",
+      );
+    }, 5000);
+
     try {
-      setIcpTipState("selecting");
-      setIcpError(null);
-      setSelectedTip(null);
       const { AuthClient } = await import("@dfinity/auth-client");
       const client = await AuthClient.create();
       await new Promise<void>((resolve, reject) => {
@@ -185,23 +205,41 @@ export default function TipDeveloper() {
           onError: (err) => reject(new Error(err ?? "Login failed")),
         });
       });
+
+      // If timeout already fired, do not update state
+      if (timedOut) return;
+      clearTimeout(timeoutId);
+
       setIdentity(client.getIdentity());
-    } catch (err) {
-      setIcpError(err instanceof Error ? err.message : "Authentication failed");
+      setIcpTipState("selecting");
+    } catch (_err) {
+      if (timedOut) return;
+      clearTimeout(timeoutId);
+      setIcpError(
+        "Internet Identity login failed or was blocked. Please try again or use copy-address tipping.",
+      );
       setIcpTipState("error");
     }
   };
 
   const handleConfirmTip = async () => {
-    if (!selectedTip || !identity) return;
-    setIcpTipState("sending");
+    if (!selectedTip) return;
+    // Guard: identity must be available for the actual transfer
+    if (!identity) {
+      setIcpError("Identity not available. Please reconnect.");
+      setIcpTipState("error");
+      return;
+    }
+    setIcpTipState("sending" as IcpTipState);
     try {
       await sendIcrcTransfer(identity, selectedTip);
-      setIcpTipState("success");
-    } catch (err) {
+      setIcpTipState("selecting"); // reuse selecting as success display handled below
+      // Use a local flag via a dedicated success state
+      setIcpTipState("success" as IcpTipState);
+    } catch (_err) {
       setIcpError(
-        err instanceof Error
-          ? err.message
+        _err instanceof Error
+          ? (_err as Error).message
           : "Transfer failed. Please try again.",
       );
       setIcpTipState("error");
@@ -312,7 +350,7 @@ export default function TipDeveloper() {
               {/* Divider */}
               <div className="border-t border-border/40 my-1" />
 
-              {/* ICP native tip */}
+              {/* ICP native tip — idle */}
               {icpTipState === "idle" && (
                 <Button
                   data-ocid="tip.secondary_button"
@@ -321,11 +359,12 @@ export default function TipDeveloper() {
                   className="w-full text-xs h-9 border-dashed"
                   onClick={handleIcpTip}
                 >
-                  Tip with Internet Identity ⚡
+                  Tip with Internet Identity ⚡ (Beta)
                 </Button>
               )}
 
-              {icpTipState === "selecting" && !identity && (
+              {/* loading */}
+              {icpTipState === "loading" && (
                 <div
                   className="flex items-center justify-center gap-2 py-3 text-xs text-muted-foreground"
                   data-ocid="tip.loading_state"
@@ -352,11 +391,12 @@ export default function TipDeveloper() {
                       strokeLinecap="round"
                     />
                   </svg>
-                  Connecting to Internet Identity…
+                  Connecting to Internet Identity...
                 </div>
               )}
 
-              {icpTipState === "selecting" && identity && (
+              {/* selecting — show amount picker regardless of identity truthy check */}
+              {icpTipState === "selecting" && (
                 <motion.div
                   initial={{ opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -407,7 +447,8 @@ export default function TipDeveloper() {
                 </motion.div>
               )}
 
-              {icpTipState === "sending" && (
+              {/* sending */}
+              {(icpTipState as string) === "sending" && (
                 <div
                   className="flex items-center justify-center gap-2 py-3 text-xs text-muted-foreground"
                   data-ocid="tip.loading_state"
@@ -438,7 +479,8 @@ export default function TipDeveloper() {
                 </div>
               )}
 
-              {icpTipState === "success" && (
+              {/* success */}
+              {(icpTipState as string) === "success" && (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -454,13 +496,37 @@ export default function TipDeveloper() {
                 </motion.div>
               )}
 
+              {/* unavailable */}
+              {icpTipState === "unavailable" && (
+                <div
+                  className="flex flex-col gap-1.5"
+                  data-ocid="tip.unavailable_state"
+                >
+                  <p className="text-xs text-muted-foreground">
+                    Native ICP tipping is not available in this environment yet.
+                    Use copy-address tipping below.
+                  </p>
+                  <Button
+                    data-ocid="tip.cancel_button"
+                    variant="ghost"
+                    size="sm"
+                    className="w-full h-8 text-xs text-muted-foreground"
+                    onClick={handleRetry}
+                  >
+                    Dismiss
+                  </Button>
+                </div>
+              )}
+
+              {/* error */}
               {icpTipState === "error" && (
                 <div
                   className="flex flex-col gap-1.5"
                   data-ocid="tip.error_state"
                 >
                   <p className="text-xs text-destructive">
-                    {icpError ?? "Something went wrong."}
+                    {icpError ??
+                      "Internet Identity login failed or was blocked. Please try again or use copy-address tipping."}
                   </p>
                   <Button
                     data-ocid="tip.secondary_button"
