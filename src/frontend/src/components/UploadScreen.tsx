@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { FileText, Lock, Shield, Upload, Zap } from "lucide-react";
+import { Lock, Shield, Upload, Zap } from "lucide-react";
 import { motion } from "motion/react";
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -64,15 +64,49 @@ export default function UploadScreen({ onFileSelect }: Props) {
         transition={{ duration: 0.3 }}
         className="mb-10 text-center"
       >
-        <div className="flex items-center justify-center gap-3 mb-3">
-          <img
-            src="/assets/uploads/signly-019d2e87-2375-704f-8372-0ce142d03f42-1.png"
-            alt="Signly"
-            fetchPriority="high"
-            decoding="sync"
-            className="h-40 w-auto object-contain rounded-xl"
-            style={{ imageRendering: "auto" }}
-          />
+        {/*
+          Landing-page logo: split into two elements so colors can be controlled
+          independently. The single-image approach with brightness(0)+invert(1)
+          collapsed everything to white — including the inner signature mark —
+          making it invisible against the white square.
+          Fix: JSX icon (white square + dark purple SVG mark) + white wordmark text.
+          This component is only rendered on the landing page (before PDF upload),
+          so it does not affect any other logo instance in the app.
+        */}
+        <div className="flex items-center justify-center gap-4 mb-3">
+          {/* Icon: white rounded square with dark purple signature mark */}
+          <div
+            className="flex items-center justify-center rounded-xl flex-shrink-0"
+            style={{ width: "88px", height: "88px", background: "#ffffff" }}
+          >
+            <svg
+              viewBox="0 0 52 52"
+              width="46"
+              height="46"
+              fill="none"
+              aria-hidden="true"
+            >
+              {/* Signature / handwriting stroke — dark brand purple */}
+              <path
+                d="M10 36 C14 25 18 19 22 27 C26 35 28 18 39 22"
+                stroke="#4B1D95"
+                strokeWidth="3.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+          {/* Wordmark — white, matching original logo appearance */}
+          <span
+            className="text-white font-black tracking-tight"
+            style={{
+              fontSize: "5rem",
+              lineHeight: 1,
+              letterSpacing: "-0.03em",
+            }}
+          >
+            Signly
+          </span>
         </div>
         <p className="text-white/70 text-sm font-medium tracking-wide uppercase">
           Free · Private · Instant

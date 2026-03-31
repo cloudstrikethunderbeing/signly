@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 import { Button } from "@/components/ui/button";
-import { FileText, Redo2, Undo2 } from "lucide-react";
+import { Redo2, Undo2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
@@ -62,7 +62,7 @@ export default function SigningWorkspace({
   >("signature");
   const [showStampPicker, setShowStampPicker] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [downloadSuccess, setDownloadSuccess] = useState(false);
+  const [_downloadSuccess, setDownloadSuccess] = useState(false);
 
   // Undo/redo history
   const [overlayHistory, setOverlayHistory] = useState<OverlayItem[][]>([[]]);
@@ -286,15 +286,44 @@ export default function SigningWorkspace({
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="flex items-center justify-between px-4 py-3 bg-white border-b border-border shadow-xs flex-shrink-0">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 brand-gradient rounded-lg flex items-center justify-center">
-              <FileText className="w-4 h-4 text-white" />
+          {/* Logo: same icon style as landing page — white square + dark purple SVG mark + wordmark */}
+          <div className="flex items-center gap-3">
+            <div
+              className="flex items-center justify-center rounded-xl flex-shrink-0"
+              style={{
+                width: "38px",
+                height: "38px",
+                background: "#ffffff",
+                boxShadow:
+                  "0 0 0 1.5px rgba(75,29,149,0.25), 0 1px 4px rgba(0,0,0,0.07)",
+              }}
+            >
+              <svg
+                viewBox="0 0 52 52"
+                width="24"
+                height="24"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path
+                  d="M10 36 C14 25 18 19 22 27 C26 35 28 18 39 22"
+                  stroke="#4B1D95"
+                  strokeWidth="3.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
             </div>
-            <img
-              src="/assets/uploads/signly-019d2e87-2375-704f-8372-0ce142d03f42-1.png"
-              alt="Signly"
-              className="h-24 w-auto object-contain"
-            />
+            <span
+              className="font-black tracking-tight text-foreground"
+              style={{
+                fontSize: "1.5rem",
+                lineHeight: 1,
+                letterSpacing: "-0.03em",
+              }}
+            >
+              Signly
+            </span>
           </div>
 
           {/* Undo / Redo */}
@@ -460,7 +489,7 @@ export default function SigningWorkspace({
               ))}
             </Document>
 
-            {downloadSuccess && (
+            {numPages > 0 && (
               <div className="w-full max-w-[800px] mt-2 mb-4">
                 <TipDeveloper />
               </div>

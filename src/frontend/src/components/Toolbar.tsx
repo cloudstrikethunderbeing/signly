@@ -61,6 +61,15 @@ export default function Toolbar({
 }: Props) {
   return (
     <>
+      {/* Mobile: subtle tip cue — fixed, floats above the bottom bar, right-aligned near Download */}
+      <a
+        href="#tip-section"
+        className="md:hidden fixed bottom-[72px] right-3 z-20 text-[10px] text-white/70 hover:text-white bg-black/30 hover:bg-black/50 backdrop-blur-sm rounded-full px-2 py-0.5 transition-colors leading-tight"
+        aria-label="Tip the developer"
+      >
+        💜 Tip the dev
+      </a>
+
       {/* Mobile: fixed bottom bar */}
       <nav
         className="md:hidden fixed bottom-0 left-0 right-0 z-20 brand-gradient shadow-toolbar"
@@ -142,8 +151,15 @@ export default function Toolbar({
           })}
         </div>
 
-        {/* Download at bottom */}
+        {/* Download at bottom — with tip cue above */}
         <div className="w-full px-2 mt-auto">
+          <a
+            href="#tip-section"
+            className="block text-center text-[9px] text-white/50 hover:text-white/80 transition-colors mb-2 leading-tight"
+            aria-label="Tip the developer"
+          >
+            💜 Tip the dev
+          </a>
           <motion.button
             type="button"
             data-ocid="toolbar.download.button"
