@@ -8,14 +8,44 @@
 
 import { IDL } from '@icp-sdk/core/candid';
 
+export const BugReport = IDL.Record({
+  'description' : IDL.Text,
+  'email' : IDL.Opt(IDL.Text),
+  'timestamp' : IDL.Int,
+  'deviceInfo' : IDL.Text,
+});
+
 export const idlService = IDL.Service({
+  'getAverageRating' : IDL.Func([], [IDL.Float64], ['query']),
+  'getBugReports' : IDL.Func([], [IDL.Vec(BugReport)], ['query']),
+  'getRatingCount' : IDL.Func([], [IDL.Nat], ['query']),
   'health' : IDL.Func([], [IDL.Text], ['query']),
+  'submitBugReport' : IDL.Func([IDL.Text, IDL.Opt(IDL.Text), IDL.Text], [], []),
+  'submitRating' : IDL.Func([IDL.Nat], [], []),
 });
 
 export const idlInitArgs = [];
 
 export const idlFactory = ({ IDL }) => {
-  return IDL.Service({ 'health' : IDL.Func([], [IDL.Text], ['query']) });
+  const BugReport = IDL.Record({
+    'description' : IDL.Text,
+    'email' : IDL.Opt(IDL.Text),
+    'timestamp' : IDL.Int,
+    'deviceInfo' : IDL.Text,
+  });
+  
+  return IDL.Service({
+    'getAverageRating' : IDL.Func([], [IDL.Float64], ['query']),
+    'getBugReports' : IDL.Func([], [IDL.Vec(BugReport)], ['query']),
+    'getRatingCount' : IDL.Func([], [IDL.Nat], ['query']),
+    'health' : IDL.Func([], [IDL.Text], ['query']),
+    'submitBugReport' : IDL.Func(
+        [IDL.Text, IDL.Opt(IDL.Text), IDL.Text],
+        [],
+        [],
+      ),
+    'submitRating' : IDL.Func([IDL.Nat], [], []),
+  });
 };
 
 export const init = ({ IDL }) => { return []; };

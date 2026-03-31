@@ -89,11 +89,65 @@ export class ExternalBlob {
         return this;
     }
 }
-export interface backendInterface {
-    health(): Promise<string>;
+export interface BugReport {
+    description: string;
+    email?: string;
+    timestamp: bigint;
+    deviceInfo: string;
 }
+export interface backendInterface {
+    getAverageRating(): Promise<number>;
+    getBugReports(): Promise<Array<BugReport>>;
+    getRatingCount(): Promise<bigint>;
+    health(): Promise<string>;
+    submitBugReport(description: string, email: string | null, deviceInfo: string): Promise<void>;
+    submitRating(value: bigint): Promise<void>;
+}
+import type { BugReport as _BugReport } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
+    async getAverageRating(): Promise<number> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAverageRating();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAverageRating();
+            return result;
+        }
+    }
+    async getBugReports(): Promise<Array<BugReport>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getBugReports();
+                return from_candid_vec_n1(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getBugReports();
+            return from_candid_vec_n1(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getRatingCount(): Promise<bigint> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getRatingCount();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getRatingCount();
+            return result;
+        }
+    }
     async health(): Promise<string> {
         if (this.processError) {
             try {
@@ -108,6 +162,64 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async submitBugReport(arg0: string, arg1: string | null, arg2: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.submitBugReport(arg0, to_candid_opt_n5(this._uploadFile, this._downloadFile, arg1), arg2);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.submitBugReport(arg0, to_candid_opt_n5(this._uploadFile, this._downloadFile, arg1), arg2);
+            return result;
+        }
+    }
+    async submitRating(arg0: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.submitRating(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.submitRating(arg0);
+            return result;
+        }
+    }
+}
+function from_candid_BugReport_n2(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _BugReport): BugReport {
+    return from_candid_record_n3(_uploadFile, _downloadFile, value);
+}
+function from_candid_opt_n4(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [string]): string | null {
+    return value.length === 0 ? null : value[0];
+}
+function from_candid_record_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    description: string;
+    email: [] | [string];
+    timestamp: bigint;
+    deviceInfo: string;
+}): {
+    description: string;
+    email?: string;
+    timestamp: bigint;
+    deviceInfo: string;
+} {
+    return {
+        description: value.description,
+        email: record_opt_to_undefined(from_candid_opt_n4(_uploadFile, _downloadFile, value.email)),
+        timestamp: value.timestamp,
+        deviceInfo: value.deviceInfo
+    };
+}
+function from_candid_vec_n1(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_BugReport>): Array<BugReport> {
+    return value.map((x)=>from_candid_BugReport_n2(_uploadFile, _downloadFile, x));
+}
+function to_candid_opt_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: string | null): [] | [string] {
+    return value === null ? candid_none() : candid_some(value);
 }
 export interface CreateActorOptions {
     agent?: Agent;

@@ -10,7 +10,20 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
-export interface _SERVICE { 'health' : ActorMethod<[], string> }
+export interface BugReport {
+  'description' : string,
+  'email' : [] | [string],
+  'timestamp' : bigint,
+  'deviceInfo' : string,
+}
+export interface _SERVICE {
+  'getAverageRating' : ActorMethod<[], number>,
+  'getBugReports' : ActorMethod<[], Array<BugReport>>,
+  'getRatingCount' : ActorMethod<[], bigint>,
+  'health' : ActorMethod<[], string>,
+  'submitBugReport' : ActorMethod<[string, [] | [string], string], undefined>,
+  'submitRating' : ActorMethod<[bigint], undefined>,
+}
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];
 export declare const idlFactory: IDL.InterfaceFactory;

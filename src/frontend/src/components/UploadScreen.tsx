@@ -3,6 +3,7 @@ import { Lock, Shield, Upload, Zap } from "lucide-react";
 import { motion } from "motion/react";
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
+import BugReportModal from "./BugReportModal";
 
 interface Props {
   onFileSelect: (file: File, bytes: ArrayBuffer) => void;
@@ -12,6 +13,7 @@ export default function UploadScreen({ onFileSelect }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [bugModalOpen, setBugModalOpen] = useState(false);
 
   const processFile = useCallback(
     async (file: File) => {
@@ -236,6 +238,25 @@ export default function UploadScreen({ onFileSelect }: Props) {
           caffeine.ai
         </a>
       </motion.p>
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.4 }}
+        className="mt-2 text-white/30 text-xs text-center"
+      >
+        <button
+          type="button"
+          data-ocid="upload.bug_report.open_modal_button"
+          onClick={() => setBugModalOpen(true)}
+          className="underline hover:text-white/60 transition-colors"
+        >
+          Report a bug
+        </button>
+      </motion.p>
+      <BugReportModal
+        open={bugModalOpen}
+        onClose={() => setBugModalOpen(false)}
+      />
     </div>
   );
 }

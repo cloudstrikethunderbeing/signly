@@ -10,6 +10,7 @@ import { exportSignedPdf } from "../utils/pdfExport";
 import OverlayElement from "./OverlayElement";
 import SignatureModal from "./SignatureModal";
 import StampPicker from "./StampPicker";
+import StarRating from "./StarRating";
 import TextStylePanel from "./TextStylePanel";
 import TipDeveloper from "./TipDeveloper";
 import Toolbar from "./Toolbar";
@@ -492,6 +493,11 @@ export default function SigningWorkspace({
             {numPages > 0 && (
               <div className="w-full max-w-[800px] mt-2 mb-4">
                 <TipDeveloper />
+              </div>
+            )}
+            {numPages > 0 && (
+              <div className="w-full max-w-[800px] mt-2 mb-6">
+                <StarRating />
               </div>
             )}
           </div>
